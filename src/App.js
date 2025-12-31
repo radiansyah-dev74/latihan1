@@ -2,6 +2,14 @@ import React from 'react';
 import logo from './logo.svg';
 import './App.css';
 
+
+// === PR AGENT TEST ===
+function add(a, b) {
+  return a + b;
+}
+
+console.log("PR Agent test:", add(2, 3));
+
 function App() {
   return (
     <div className="App">
