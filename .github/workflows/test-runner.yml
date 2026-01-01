@@ -1,0 +1,16 @@
+name: Test Self Hosted Runner
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test-runner:
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Runner check
+        run: |
+          echo "Runner berhasil dipanggil"
+          hostname
+          whoami
