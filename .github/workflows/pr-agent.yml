@@ -1,0 +1,26 @@
+name: Qodo PR Review (Self-Hosted)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-agent:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Qodo PR-Agent via existing venv
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Using existing Qodo venv"
+          source /home/ubuntu/pr-agent/.venv/bin/activate
+
+          cd /home/ubuntu/pr-agent
+
+          python -m pr_agent.cli \
+            --repo ${{ github.repository }} \
+            --pr_number ${{ github.event.pull_request.number }}
