@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Qodo PR Agent (explicit CLI mode)
+      - name: Run Qodo PR Agent (IMPROVE MODE)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -27,10 +27,10 @@ jobs:
           cd /home/ubuntu/pr-agent
 
           PR_URL="${{ github.event.pull_request.html_url }}"
-
-          echo "Running Qodo review on:"
+          echo "Running Qodo IMPROVE on:"
           echo "$PR_URL"
 
           python -m pr_agent.cli \
             --pr_url="$PR_URL" \
-            review
+            improve \
+            --pr_reviewer.extra_instructions="Act as a very strict senior engineer. Suggest concrete refactors, edge-case handling, performance improvements, and missing tests. Be explicit and critical."
