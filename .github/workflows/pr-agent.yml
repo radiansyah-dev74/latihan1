@@ -4,7 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# ⬇️ INI YANG KEMARIN KURANG
 permissions:
   contents: read
   pull-requests: write
@@ -18,18 +17,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run Qodo PR Agent
+      - name: Run Qodo PR Agent (CI Mode)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          echo "Activating Qodo venv"
+
+          echo "Activating Qodo virtualenv"
           source /home/ubuntu/pr-agent/.venv/bin/activate
 
           cd /home/ubuntu/pr-agent
 
-          echo "Running Qodo on PR:"
-          echo "${{ github.event.pull_request.html_url }}"
-
-          python -m pr_agent.cli \
-            --issue_url "${{ github.event.pull_request.html_url }}"
+          echo "Running Qodo in CI PR review mode"
+          python -m pr_agent.cli
