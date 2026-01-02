@@ -1,0 +1,96 @@
+name: Qodo PR Review (Self-Hosted)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  qodo-pr-agent:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Qodo PR Agent (auto + interactive)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          echo "=== Activate Qodo virtualenv ==="
+          source /home/ubuntu/pr-agent/.venv/bin/activate
+          cd /home/ubuntu/pr-agent
+
+          # =====================================================
+          # CASE 1 — AUTO REVIEW WHEN PR IS OPENED / UPDATED
+          # =====================================================
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_URL="${{ github.event.pull_request.html_url }}"
+
+            echo "Auto review triggered for PR:"
+            echo "$PR_URL"
+
+            python -m pr_agent.cli \
+              --pr_url="$PR_URL" \
+              improve \
+              --pr_reviewer.extra_instructions="Act as a very strict senior engineer. Be critical. Identify bugs, bad patterns, missing tests, security risks, performance issues, and architecture smells. Prefer concrete code suggestions."
+
+          # =====================================================
+          # CASE 2 — INTERACTIVE COMMANDS VIA COMMENTS
+          # =====================================================
+          elif [ "${{ github.event_name }}" = "issue_comment" ]; then
+            BODY="${{ github.event.comment.body }}"
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
+            REPO="${{ github.repository }}"
+
+            echo "Comment received:"
+            echo "$BODY"
+
+            echo "Resolving PR URL via GitHub API..."
+
+            PR_URL=$(curl -s \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/$REPO/pulls/$ISSUE_NUMBER \
+              | jq -r '.html_url')
+
+            echo "Resolved PR URL:"
+            echo "$PR_URL"
+
+            if [[ "$PR_URL" == "null" || -z "$PR_URL" ]]; then
+              echo "This comment is not on a PR. Exiting."
+              exit 0
+            fi
+
+            if [[ "$BODY" == /ask* ]]; then
+              echo "Running Qodo ASK"
+              python -m pr_agent.cli \
+                --pr_url="$PR_URL" \
+                ask "${BODY#/ask }"
+
+            elif [[ "$BODY" == /review* ]]; then
+              echo "Running Qodo REVIEW"
+              python -m pr_agent.cli \
+                --pr_url="$PR_URL" \
+                review
+
+            elif [[ "$BODY" == /improve* ]]; then
+              echo "Running Qodo IMPROVE (manual)"
+              python -m pr_agent.cli \
+                --pr_url="$PR_URL" \
+                improve \
+                --pr_reviewer.extra_instructions="Be extremely strict and detailed. Suggest refactors, edge cases, security issues, and missing tests."
+
+            else
+              echo "No Qodo command detected. Ignoring."
+            fi
+          fi
