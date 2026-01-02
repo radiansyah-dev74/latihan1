@@ -17,8 +17,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Run Qodo PR Agent (auto + interactive)
         env:
@@ -26,47 +25,52 @@ jobs:
         run: |
           set -e
 
-          echo "=== Activating Qodo venv ==="
           source /home/ubuntu/pr-agent/.venv/bin/activate
           cd /home/ubuntu/pr-agent
 
-          # ---- CASE 1: PR EVENT (auto review / improve) ----
+          # ===============================
+          # AUTO REVIEW ON PR EVENT
+          # ===============================
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             PR_URL="${{ github.event.pull_request.html_url }}"
-            echo "Running Qodo IMPROVE on PR:"
+            echo "Auto review on PR:"
             echo "$PR_URL"
 
             python -m pr_agent.cli \
               --pr_url="$PR_URL" \
               improve \
-              --pr_reviewer.extra_instructions="Act as a very strict senior engineer. Be critical. Point out bad patterns, missing tests, security issues, performance problems, and architecture smells. Prefer concrete code suggestions."
+              --pr_reviewer.extra_instructions="Be very strict. Highlight bugs, smells, missing tests, security risks, and performance issues."
 
-          # ---- CASE 2: COMMENT EVENT (/ask, /review, etc) ----
+          # ===============================
+          # INTERACTIVE COMMANDS
+          # ===============================
           elif [ "${{ github.event_name }}" = "issue_comment" ]; then
             BODY="${{ github.event.comment.body }}"
-            ISSUE_URL="${{ github.event.issue.html_url }}"
 
-            echo "Comment received:"
+            # ❗ INI YANG PENTING
+            PR_URL="${{ github.event.issue.pull_request.html_url }}"
+
+            echo "Command received:"
             echo "$BODY"
+            echo "PR:"
+            echo "$PR_URL"
 
             if [[ "$BODY" == /ask* ]]; then
-              QUESTION="${BODY#/ask }"
               python -m pr_agent.cli \
-                --issue_url="$ISSUE_URL" \
-                ask "$QUESTION"
+                --pr_url="$PR_URL" \
+                ask "${BODY#/ask }"
 
             elif [[ "$BODY" == /review* ]]; then
               python -m pr_agent.cli \
-                --pr_url="$ISSUE_URL" \
+                --pr_url="$PR_URL" \
                 review
 
             elif [[ "$BODY" == /improve* ]]; then
               python -m pr_agent.cli \
-                --pr_url="$ISSUE_URL" \
-                improve \
-                --pr_reviewer.extra_instructions="Be extremely strict and detailed. Suggest refactors, edge cases, and tests."
+                --pr_url="$PR_URL" \
+                improve
 
             else
-              echo "No Qodo command detected. Ignoring."
+              echo "No Qodo command detected"
             fi
           fi
