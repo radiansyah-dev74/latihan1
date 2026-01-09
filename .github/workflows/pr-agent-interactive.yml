@@ -1,0 +1,46 @@
+name: Qodo PR Agent (Interactive)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-agent-interactive:
+    if: >
+      github.event.issue.pull_request &&
+      (
+        startsWith(github.event.comment.body, '/review') ||
+        startsWith(github.event.comment.body, '/ask') ||
+        startsWith(github.event.comment.body, '/improve') ||
+        startsWith(github.event.comment.body, '/reflect')
+      )
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Qodo PR Agent (Interactive Mode)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          echo "Activating Qodo venv"
+          source /home/ubuntu/pr-agent/.venv/bin/activate
+          cd /home/ubuntu/pr-agent
+
+          PR_URL="${{ github.event.issue.pull_request.html_url }}"
+          COMMENT="${{ github.event.comment.body }}"
+
+          echo "PR URL: $PR_URL"
+          echo "User command: $COMMENT"
+
+          python -m pr_agent.cli \
+            --pr_url="$PR_URL" \
+            ${COMMENT#/}
